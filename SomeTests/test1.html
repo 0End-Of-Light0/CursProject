@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+	<head>
+		<title>FxFK</title>
+	</head>
+	<body>
+		<header class="hat">
+			<h2>Шапка сайта</h2>
+			<button onclick="registerUser('email@example.com','password','email@example.com','Admin')">ТыкРег</button>
+		</header>
+		
+		<script>
+			function registerUser(email, password, cemail, position) {
+				console.log(email, password, cemail, position)
+				fetch('http://localhost:3000/api/changerole', {
+				method: 'POST',
+				headers: {
+				'Content-Type': 'application/json',
+				'cemail': cemail,
+				'password': password,
+				'email' :email,
+				'position': position
+				},
+				})
+			.then(response => {
+				return response.json();
+			})
+			.then(data => {
+				console.log(data)
+			})
+			.catch((error) => {
+				console.error('Error:', error);
+			});
+			}
+
+			</script>
+	</body>
+</html>

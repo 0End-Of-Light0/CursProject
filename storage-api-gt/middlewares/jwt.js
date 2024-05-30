@@ -33,11 +33,28 @@ verifyToken = (req, res, next) => {
 isUserA = async (req, res, next) => {
   try {
     if (req.headers.phone != undefined) {
-      user = await models.UserInfo.findOne({
-          where: {
-            userinfophone: req.headers.phone
+      user = await models.User.findOne({
+        include: [
+          {
+            model: models.UserInfo,
+            as: 'userinfo',
+            where: {
+              userinfoemail: req.headers.phone,
+            },
+            required: true
+          },
+          {
+            model: models.Authentication,
+            as: 'authentication',
+            required: true
+          },
+          {
+            model: models.Position,
+            as: 'position',
+            required: true
           }
-        });
+        ]
+      });
       if (!user) {
           return res.status(400).json({
             message: "Failed! This User does not exist!",
@@ -45,17 +62,34 @@ isUserA = async (req, res, next) => {
         }
   }
   else if (req.headers.email != undefined) {
-      user = await models.UserInfo.findOne({
+    user = await models.User.findOne({
+      include: [
+        {
+          model: models.UserInfo,
+          as: 'userinfo',
           where: {
-            userinfoemail: req.headers.email
-          }
-        });
-
-        if (!user) {
-            return res.status(400).json({
-              message: "Failed! This User does not exist!",
-            });
+            userinfoemail: req.headers.email,
+          },
+          required: true
+        },
+        {
+          model: models.Authentication,
+          as: 'authentication',
+          required: true
+        },
+        {
+          model: models.Position,
+          as: 'position',
+          required: true
         }
+      ]
+    });
+
+    if (!user) {
+        return res.status(400).json({
+            message: "Failed! This User does not exist!",
+          });
+      }
   }
   else {
       return res.status(400).json({
@@ -63,19 +97,9 @@ isUserA = async (req, res, next) => {
       });
   }
 
-  const usert = await models.User.findOne({
-    where: {
-      userinfoid: user.userinfoid
-    },
-  })
-  const usera = await models.Authentication.findOne({
-    where: {
-      authenticationid: usert.authenticationid
-    },
-  })
   const passwordIsValid = bcrypt.compareSync(
     req.headers.password,
-    usera.password
+    user.authentication.password
   );
 
   if (!passwordIsValid) {
@@ -83,12 +107,7 @@ isUserA = async (req, res, next) => {
       message: "Invalid Password!",
     });
   }
-  const role = await models.Position.findOne({
-    where: {
-        positionid: usert.positionid
-    }
-    });
-  if (role.positionname === "User" || role.positionname === "Admin") {
+  if (user.position.positionname === "User"  || user.position.positionname === "Admin") {
       return next();
     }
   return res.status(403).json({
@@ -97,6 +116,7 @@ isUserA = async (req, res, next) => {
   } catch (error) {
     return res.status(500).json({
       message: "Unable to validate User role!",
+      error: error.message
     });
   }
 };
@@ -105,11 +125,28 @@ isUserA = async (req, res, next) => {
 isAdminA = async (req, res, next) => {
   try {
     if (req.headers.phone != undefined) {
-      user = await models.UserInfo.findOne({
-          where: {
-            userinfophone: req.headers.phone
+      user = await models.User.findOne({
+        include: [
+          {
+            model: models.UserInfo,
+            as: 'userinfo',
+            where: {
+              userinfoemail: req.headers.phone,
+            },
+            required: true
+          },
+          {
+            model: models.Authentication,
+            as: 'authentication',
+            required: true
+          },
+          {
+            model: models.Position,
+            as: 'position',
+            required: true
           }
-        });
+        ]
+      });
       if (!user) {
           return res.status(400).json({
             message: "Failed! This User does not exist!",
@@ -117,36 +154,44 @@ isAdminA = async (req, res, next) => {
         }
   }
   else if (req.headers.email != undefined) {
-      user = await models.UserInfo.findOne({
+    user = await models.User.findOne({
+      include: [
+        {
+          model: models.UserInfo,
+          as: 'userinfo',
           where: {
-            userinfoemail: req.headers.email
-          }
-        });
-
-        if (!user) {
-            return res.status(400).json({
-              message: "Failed! This User does not exist!",
-            });
+            userinfoemail: req.headers.email,
+          },
+          required: true
+        },
+        {
+          model: models.Authentication,
+          as: 'authentication',
+          required: true
+        },
+        {
+          model: models.Position,
+          as: 'position',
+          required: true
         }
+      ]
+    });
+
+    if (!user) {
+        return res.status(400).json({
+            message: "Failed! This User does not exist!",
+          });
+      }
   }
   else {
       return res.status(400).json({
         message: "Failed! Empty email and phone!",
       });
   }
-  const usert = await models.User.findOne({
-    where: {
-      userinfoid: user.userinfoid
-    },
-  })
-  const usera = await models.Authentication.findOne({
-    where: {
-      authenticationid: usert.authenticationid
-    },
-  })
+
   const passwordIsValid = bcrypt.compareSync(
     req.headers.password,
-    usera.password
+    user.authentication.password
   );
 
   if (!passwordIsValid) {
@@ -154,21 +199,16 @@ isAdminA = async (req, res, next) => {
       message: "Invalid Password!",
     });
   }
-  const role = await models.Position.findOne({
-    where: {
-        positionid: usert.positionid
-    }
-    });
-    if (role.positionname === "Admin") {
+  if (user.position.positionname === "User") {
       return next();
     }
-    return res.status(403).json({
+  return res.status(403).json({
       message: "Require Admin Role!",
     });
   } catch (error) {
     return res.status(500).json({
       message: "Unable to validate Admin role!",
-      error: error.message,
+      error: error.message
     });
   }
 };
@@ -181,7 +221,7 @@ isUser = async (req, res, next) => {
             positionid: user.positionid
         }
     });
-    if (role.positionname === "User" || role.positionname === "Admin") {
+    if (role.positionname === "User" || user.position.positionname === "Admin") {
         return next();
     }
     return res.status(403).json({
